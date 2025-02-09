@@ -9,7 +9,7 @@
 // #define NEW_PIN XX
 
 // Adjustable Expo Factor (0.0 = Maximum non-linear response, 1.0 = Linear response)
-#define FILTER_FACTOR_NOMRALIZED        0.4
+#define FILTER_FACTOR_NOMRALIZED        0.05
 /*
   Filter    Reaction      Smoothing
   0.1       Very slow     Very strongly smoothed
@@ -22,10 +22,10 @@
 #define FILTER_DISABLED               0                                   // No filter input = output
 #define FILTER_NON_LINEAR_EXPO_CURVE  1                                   // Non-Linear Exponential Curve
 #define FILTER_EXPO_MOVING_AVG        2                                   // Exponential Moving Average
-#define FILTER                        (FILTER_EXPO_MOVING_AVG)      // Selected Filter
+#define FILTER                        (FILTER_NON_LINEAR_EXPO_CURVE)      // Selected Filter
 
 #define NORMALIZE_FACTOR              1000
-#define EXPO_FACTOR                   (1 - (FILTER_FACTOR_NOMRALIZED))
+#define EXPO_FACTOR                   (1 - FILTER_FACTOR_NOMRALIZED)
 #define EMA_ALPHA                     (FILTER_FACTOR_NOMRALIZED * NORMALIZE_FACTOR) // EMA Alpha factor for Int calculation
 
 
@@ -160,12 +160,12 @@ void IRAM_ATTR ppmIsrKillSw()
 
 int ApplyFilter(int input)
 {
-  #if FILTER == 0
+  #if FILTER == FILTER_DISABLED
   return input;
-  #elif FILTER == 1
+  #elif FILTER == FILTER_NON_LINEAR_EXPO_CURVE
   return ExpoFilter(input); // Non-Linear Exponential Curve
-  #elif FILTER == 2 // Exponential Moving Average
-  return EmaFilter(input);
+  #elif FILTER == FILTER_EXPO_MOVING_AVG
+  return EmaFilter(input); // Exponential Moving Average
   #endif  
 }
 
@@ -174,11 +174,11 @@ int ExpoFilter(int input)
   float inputNorm = (float)input / 1000.0f; // [-1.0, 1.0]
   float output = 0.0f;
   // Calculate the cubic (input^3) part
-  float inputCubed = input * input * input; // Ensure no overflow!
+  float inputCubed = inputNorm * inputNorm * inputNorm; // Ensure no overflow!
   // Apply the integer expo curve formula
   output = (EXPO_FACTOR * inputCubed) + ((1 - EXPO_FACTOR) * inputNorm);
 
-  return (int)(output * 1000 + 0.5f);
+  return (int)(output * 1000);
 }
 
 int EmaFilter(int input)
